@@ -153,7 +153,6 @@ class ImageWriter:
 
 
    def lineFeed(self,lines):
-      print(self.page)
       self.dot["line"]=self.dot["line"]+lines*self.dot["lineFeedSpacing"]
       if self.dot["line"]<0: self.dot["line"]=0
       if self.dot["line"]+self.fontrefl*ref_font_upscale > self.ic:
@@ -516,7 +515,8 @@ class ImageWriter:
       ser.close()
 
  
-printer = ImageWriter("p1",21/2.54,29.7/2.54)
+#printer = ImageWriter("p1",21/2.54,29.7/2.54)
+printer = ImageWriter("p1",8.5,12)
 #printer.crlf=False
 #printer.serial_to_buffer("/dev/tty.usbserial-14330",\
 #                         9600,\
@@ -546,61 +546,40 @@ printer.add_to_buffer(chr(27))
 printer.add_to_buffer("a")
 printer.add_to_buffer("2")
 printer.add_to_buffer("T")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("N")
 printer.add_to_buffer("O")
 printer.add_to_buffer("T")
 printer.add_to_buffer("O")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("a")
-printer.add_to_buffer("1")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("&")
-printer.add_to_buffer("A")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("$")
-printer.add_to_buffer(chr(192))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('Z')
-printer.add_to_buffer(chr(0))
-printer.add_to_buffer(' ')
-printer.add_to_buffer(chr(192))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('D')
-printer.add_to_buffer(chr(0))
-printer.add_to_buffer(' ')
-printer.add_to_buffer(chr(192))
 
-print("us")
+# sp
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer('Z')
 printer.add_to_buffer(chr(7))
 printer.add_to_buffer(chr(0))
-printer.add_to_buffer('@')
 
-print("sp")
+# us
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer('D')
 printer.add_to_buffer(chr(7))
 printer.add_to_buffer(chr(0))
-printer.add_to_buffer('@')
 
 # Undelined
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer('X')
+
 # Half-Height
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer('w')
-printer.add_str_to_buffer("Une longue cha|ne")
+printer.add_str_to_buffer("Une longue chai"+chr(8)+"^ne")
 # end Half-Height
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer('W')
 
+# nlq font
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer("a")
-printer.add_to_buffer("0")
+printer.add_to_buffer("2")
 
-print("fr")
+# fr
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer('Z')
 printer.add_to_buffer(chr(1))
@@ -609,7 +588,6 @@ printer.add_to_buffer(chr(27))
 printer.add_to_buffer('D')
 printer.add_to_buffer(chr(6))
 printer.add_to_buffer(chr(0))
-printer.add_to_buffer('@')
 
 printer.add_str_to_buffer(" de charact"+chr(125)+"res")
 printer.add_to_buffer(chr(27))

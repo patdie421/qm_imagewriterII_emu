@@ -1,4 +1,4 @@
-nlq_alt={
+_nlq_alt={
    "dieze": [ # # $23
       [0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0],
       [0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0],
@@ -777,8 +777,7 @@ nlq_alt={
       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-   ],
-   ],
+   ]
 }
 
 
@@ -3283,6 +3282,106 @@ nlq_m=[
       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
    ]
 ]
+
+
+nlq_alt={
+   "us": [
+      _nlq_alt["dieze"],
+      _nlq_alt["arobase"],
+      _nlq_alt["crochet_o"],
+      _nlq_alt["antislash"],
+      _nlq_alt["crochet_f"],
+      _nlq_alt["accent_g"],
+      _nlq_alt["accolade_o"],
+      _nlq_alt["pipe"],
+      _nlq_alt["accolade_f"],
+      _nlq_alt["tilde"]
+   ],
+   "uk": [
+      _nlq_alt["livre"],
+      _nlq_alt["arobase"],
+      _nlq_alt["crochet_o"],
+      _nlq_alt["antislash"],
+      _nlq_alt["crochet_f"],
+      _nlq_alt["accent_g"],
+      _nlq_alt["accolade_o"],
+      _nlq_alt["pipe"],
+      _nlq_alt["accolade_f"],
+      _nlq_alt["tilde"]
+   ],
+   "fr": [
+      _nlq_alt["livre"],
+      _nlq_alt["a_g"],
+      _nlq_alt["degre"],
+      _nlq_alt["c_c"],
+      _nlq_alt["paragraphe"],
+      _nlq_alt["accent_g"],
+      _nlq_alt["e_e"],
+      _nlq_alt["u_g"],
+      _nlq_alt["e_g"],
+      _nlq_alt["trema"]
+   ],
+   "it": [
+      _nlq_alt["dieze"],
+      _nlq_alt["paragraphe"],
+      _nlq_alt["degre"],
+      _nlq_alt["c_c"],
+      _nlq_alt["e_e"],
+      _nlq_alt["u_g"],
+      _nlq_alt["a_g"],
+      _nlq_alt["o_g"],
+      _nlq_alt["e_g"],
+      _nlq_alt["i_g"]
+   ],
+   "de": [
+      _nlq_alt["dieze"],
+      _nlq_alt["paragraphe"],
+      _nlq_alt["A_u"],
+      _nlq_alt["O_u"],
+      _nlq_alt["U_u"],
+      _nlq_alt["accent_g"],
+      _nlq_alt["a_u"],
+      _nlq_alt["o_u"],
+      _nlq_alt["a_u"],
+      _nlq_alt["eszett"]
+   ],
+   "sw": [
+      _nlq_alt["dieze"],
+      _nlq_alt["arobase"],
+      _nlq_alt["A_u"],
+      _nlq_alt["O_u"],
+      _nlq_alt["A_o"],
+      _nlq_alt["accent_g"],
+      _nlq_alt["a_u"],
+      _nlq_alt["o_u"],
+      _nlq_alt["a_o"],
+      _nlq_alt["tilde"]
+   ],
+   "sp": [
+      _nlq_alt["livre"],
+      _nlq_alt["paragraphe"],
+      _nlq_alt["i_!"],
+      _nlq_alt["N_n"],
+      _nlq_alt["i_?"],
+      _nlq_alt["accent_g"],
+      _nlq_alt["degre"],
+      _nlq_alt["n_n"],
+      _nlq_alt["c_c"],
+      _nlq_alt["tilde"]
+   ],
+   "da": [
+      _nlq_alt["dieze"],
+      _nlq_alt["arobase"],
+      _nlq_alt["AE"],
+      _nlq_alt["O_barre"],
+      _nlq_alt["A_o"],
+      _nlq_alt["accent_g"],
+      _nlq_alt["ae"],
+      _nlq_alt["o_barre"],
+      _nlq_alt["a_o"],
+      _nlq_alt["tilde"]
+   ]
+}
 
 
 f_nlq={
