@@ -3393,5 +3393,6 @@ f_nlq={
    }, 
    "mouse": nlq_m,
    "upscale": 1,
+   "width_rescale": 1,
    "underline":[1,1,1,1, 1,1,1,1, 1,1,1,1, 1,1,1,1]
 }

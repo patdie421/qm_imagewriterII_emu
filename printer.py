@@ -6,6 +6,7 @@ import serial
 
 from fonts.draft import f_draft
 from fonts.correspondence import f_correspondence
+from fonts.correspondence import f_correspondenceP
 from fonts.nlq import f_nlq
 
 DEBUG=False
@@ -63,7 +64,6 @@ class ImageWriter:
       self.line_dpi = 144 # /!\ vertical is max 144 dpi ... vs column is 160 dpi
       self.column_dpi = 160
       self.max_page_width = 8 # inch
-
       self.head={}
       self.dot={}
       self.cache={}
@@ -99,6 +99,7 @@ class ImageWriter:
       self.ic=0
       self.sl=0
       self.sc=0
+      self.max_page_with_dpi=0
 
       self.hres={
          "Extended": [ 9, 72, 576, 80/72 ],
@@ -108,7 +109,7 @@ class ImageWriter:
          "Condensed" : [ 15, 120, 960, 80/120 ],
          "Ultracondensed" : [ 17, 136, 1088, 80/136 ],
          "PicaP" : [ -1, 144, 1152, 1 ],
-         "EliteP" : [ -1, 160, 1280, 0.9 ]
+         "EliteP" : [ -1, 160, 1280, 144/160 ]
       }
 
       self.alt_from_code={
@@ -131,6 +132,7 @@ class ImageWriter:
    def calc_im_size(self):
       self.sl=ref_font_upscale*self.imagescale
       self.sc=ref_font_upscale*self.imagescale
+      self.max_page_with_dpi=round(self.max_page_width*self.column_dpi*self.sl)
       self.il=round(self.column_dpi*self.width*self.sl)
       self.ic=round(self.line_dpi*self.height*self.sc)
       self.dl=(self.width-8)*self.column_dpi/2*self.sl
@@ -165,13 +167,15 @@ class ImageWriter:
       if car==chr(10):
          self.do_buffer()
          self.lineFeed(1)
-      if car==chr(13):
+      elif car==chr(13):
          self.do_buffer()
          self.CR(self.crlf)
       elif car==chr(24): # ctrl-X
          self.buffer_read_ptr=0
          self.buffer_ptr=0
       elif self.buffer_ptr < self.buffer_size:
+         if car=="0":
+            print(">:",self.buffer_ptr,self.buffer_read_ptr)
          self.buffer[self.buffer_ptr]=ord(car)
          self.buffer_ptr=self.buffer_ptr+1
          return True
@@ -223,7 +227,7 @@ class ImageWriter:
          _rc=self.imagescale*self.fontrefc*ref_font_upscale*s_w
          self.dot["column"]=self.dot["column"]-_rc
          if self.dot["column"]<self.left_margin:
-            self.doit["column"]=self.left_margin
+            self.dot["column"]=self.left_margin
  
 
    def do_esc_cmd(self):
@@ -332,19 +336,23 @@ class ImageWriter:
  
  
    def do_buffer(self):
+      if self.buffer_ptr==0:
+         return False
+
       _end=False
       while(not _end):
          c=self.buffer[self.buffer_read_ptr]
          self.buffer_read_ptr=self.buffer_read_ptr+1
+         
          if self.is_printable(c):
             self.putchar(chr(c))
          elif c==27:
             self.do_esc_cmd()
          elif c<27:
             self.do_ctrl_cmd(c)
-
          if self.buffer_read_ptr>=self.buffer_ptr:
             _end=True 
+
       self.buffer_ptr=0
       self.buffer_read_ptr=0
 
@@ -355,18 +363,22 @@ class ImageWriter:
       if lf:
          self.lineFeed(1)
          self.head["line"]=self.head["line"]+1
+   
 
-      
-   def drawchar(self,x,y,couleur,f,_car,s_w,s_h):
+   def getcharimg(self,_car,couleur,f,s_w,s_h):
 
-      if DEBUG: c=chrono()
-
-      x=int(x)
-      y=int(y)
       _car=ord(_car)
-
       _s_w=s_w
       _s_h=s_h
+
+      _rc=0
+      _rl=0
+      rc=0
+      rl=0
+      car=-1
+      prefix=""
+      suffix=""
+
       if self.doublewide==True:
          _s_w=s_w*2
       if self.mouse_on==True:
@@ -378,15 +390,7 @@ class ImageWriter:
       if self.s_script != 0:
          _s_w=s_w*0.5
          _s_h=s_h*0.5
-      _rc=self.imagescale*self.fontrefc*ref_font_upscale*_s_w
-      _rl=self.imagescale*self.fontrefl*ref_font_upscale*_s_h
-      rc=int(_rc)
-      rl=int(_rl)
-      dl=int(self.dl)
 
-      car=-1
-      prefix=""
-      suffix=""
       try:
          car=f["alt"]["list"].index(_car)
          font=f["alt"]["font"][self.alt][car]
@@ -408,19 +412,23 @@ class ImageWriter:
          suffix="_u"
 
       scar=str(car)
+
       cache_font_id=f["name"]+"_"+prefix+str(_s_w)+"_"+str(_s_h)+suffix # name of character image in cache
 
       if not cache_font_id in self.cache:
          self.cache[cache_font_id]={}
          
+      _fc=len(font[0])*f["upscale"]
+      _fl=len(font)*f["upscale"]
+      _rc=self.imagescale*_fc*_s_w*ref_font_upscale*f["width_rescale"]
+      _rl=self.imagescale*_fl*_s_h*ref_font_upscale
+
       if not scar in self.cache[cache_font_id]:
          try:
             _f=rescale(font,f["upscale"])
          except Exception as error:
             if DEBUG: print("rescale:",chr(_car),car,scar,error)
             pass
-         _fc=len(_f[0])
-         _fl=len(_f)
          imgcar = Image.new(mode="RGBA", size=(_fc, _fl), color=(255,255,255,0))
          for c in range(_fc): # colonne
             for l in range(_fl): # ligne
@@ -429,30 +437,25 @@ class ImageWriter:
                      imgcar.putpixel((c,l), (0,0,0,255))
                except:
                   pass
-         if self.underlined:
-            _u=_f=rescale(f["underline"],f["upscale"])
-            if DEBUG: print(_u,len(_u),len(_u[0]))
-            for c in range(len(_u[0])):
-               for l in range(len(_u)):
-                  if(_u[l][c]):
-                     imgcar.putpixel((c,_fl-l-1), (0,0,0,255))
-         self.cache[cache_font_id][scar] = imgcar.resize((rc, rl), Image.Resampling.LANCZOS)
+         self.cache[cache_font_id][scar] = imgcar.resize((int(_rc), int(_rl)), Image.Resampling.LANCZOS)
 
-      imgcar=self.cache[cache_font_id][scar]
+      return self.cache[cache_font_id][scar],_rc,_rl
+
+
+   def draw(self,x,y,imgcar):
 
       yd=0
+      dl=int(self.dl)
+
       if self.halfheight:
          yd=4*ref_font_upscale 
       if self.s_script<0:
          yd=7*ref_font_upscale 
 
       self.im[self.page].paste(imgcar,(x+dl,y+yd),imgcar) # see http://effbot.org/imagingbook/image.htm. second imgcar used as mask
-
       if self.boldface:
          self.im[self.page].paste(imgcar,(x+dl+1*ref_font_upscale,y+yd),imgcar)
-      if chr(_car)=='0' and self.zeroslashed:
-         self.drawchar(x,y,couleur,f,'/',_s_w,_s_h)
-      return _rc,_rl
+
 
 
    def printgr(self,x,y,b,color):
@@ -466,8 +469,6 @@ class ImageWriter:
                print(error)
                pass
       return rc,rl
-
-
    def putgr(self, b, color):
       x,y=self.printgr(self.dot["column"],self.dot["line"],b,color=color)
       if x!=None and y!=None:
@@ -484,20 +485,21 @@ class ImageWriter:
 
 
    def putchar(self,_car,color=(0,0,0)):
-      f=self.current_font
       s_w,s_h=self.getwh(self.current_size)
+      img,_rc,_rl=self.getcharimg(_car,color,self.current_font,s_w,s_h)
+      if self.dot["column"]+_rc > self.max_page_with_dpi:
+         self.CR(self.crlf)
 
-      x,y=self.drawchar(self.dot["column"],self.dot["line"],color,f,_car,s_w,s_h)
-      if x!=None and y!=None:
-         if self.dot["column"]+x+0.05 < self.il:
-            self.head["column"]=self.head["column"]+1
-            self.dot["column"]=self.dot["column"]+x
-         else:
-            self.head["column"]=self.left_margin
-            self.head["line"]=self.head["line"]+1
-            self.dot["column"]=0
-            self.lineFeed(1)
+      printer.draw(int(self.dot["column"]),int(self.dot["line"]),img)
 
+      if _car=='0' and self.zeroslashed:
+         img,x,x=self.getcharimg("/",color,self.current_font,s_w,s_h)
+         printer.draw(int(self.dot["column"]),int(self.dot["line"]),img)
+
+      self.dot["column"]=self.dot["column"]+_rc
+      self.head["column"]=self.head["column"]+1
+      if self.dot["column"]<18:
+         print("ici:",ord(_car))
 
    def serial_to_buffer(self,port,baudrate,parity,stopbits,bytesize):
       ser = serial.Serial(port=port,\
@@ -517,11 +519,48 @@ class ImageWriter:
  
 #printer = ImageWriter("p1",21/2.54,29.7/2.54)
 printer = ImageWriter("p1",8.5,12)
-#printer.crlf=False
 #printer.serial_to_buffer("/dev/tty.usbserial-14330",\
 #                         9600,\
 #                         serial.PARITY_NONE,\
 #                         serial.STOPBITS_ONE,serial.SEVENBITS)
+#printer.zeroslashed=True
+#printer.crlf=False
+printer.setCurrentSize("Pica")
+printer.setCurrentFont(f_draft)
+printer.boldface=True
+printer.add_str_to_buffer('A')
+for i in range(33,126):
+   printer.add_str_to_buffer(chr(i))
+printer.add_to_buffer(chr(13))
+#printer.add_to_buffer(chr(10))
+
+printer.setCurrentSize("Pica")
+printer.setCurrentFont(f_correspondence)
+printer.add_str_to_buffer('A')
+printer.boldface=False
+for i in range(33,126):
+   printer.add_str_to_buffer(chr(i))
+printer.add_to_buffer(chr(13))
+
+printer.setCurrentFont(f_correspondenceP)
+
+printer.setCurrentSize("PicaP")
+printer.add_str_to_buffer('A')
+for i in range(33,126):
+   printer.add_str_to_buffer(chr(i))
+printer.add_to_buffer(chr(13))
+
+printer.setCurrentSize("EliteP")
+printer.add_str_to_buffer('A')
+for i in range(33,126):
+   printer.add_str_to_buffer(chr(i))
+printer.add_to_buffer(chr(13))
+print("1:",printer.dot["column"])
+printer.do_buffer()
+print("2:",printer.dot["column"])
+printer.setCurrentSize("Pica")
+print("3:",printer.dot["column"])
+#printer.add_to_buffer(chr(13))
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer("a")
 printer.add_to_buffer("1")
@@ -638,5 +677,6 @@ printer.add_str_to_buffer("0000")
 printer.do_buffer()
 
 printer.im[0].save("test.pdf",save_all=True,append=False,dpi=(160*printer.sc,144*printer.sl),append_images=printer.im[1:])
+#printer.im[0].save("test.pdf",save_all=True,append=False,append_images=printer.im[1:])
 
 sys.exit()

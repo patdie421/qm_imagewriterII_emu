@@ -1954,6 +1954,7 @@ f_draft={
    },
    "mouse": draft_m,
    "upscale": 2,
+   "width_rescale":2/3,
    "underline":[1,0,1,0,1,0,1,0,1,0,1,0]
 }
 
