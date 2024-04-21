@@ -8,6 +8,7 @@ from fonts.draft import f_draft
 from fonts.correspondence import f_correspondence
 from fonts.correspondence import f_correspondenceP
 from fonts.nlq import f_nlq
+from fonts.nlq import f_nlqP
 
 DEBUG=False
 
@@ -174,8 +175,6 @@ class ImageWriter:
          self.buffer_read_ptr=0
          self.buffer_ptr=0
       elif self.buffer_ptr < self.buffer_size:
-         if car=="0":
-            print(">:",self.buffer_ptr,self.buffer_read_ptr)
          self.buffer[self.buffer_ptr]=ord(car)
          self.buffer_ptr=self.buffer_ptr+1
          return True
@@ -189,7 +188,7 @@ class ImageWriter:
 
  
    def is_printable(self,car):
-      if car in range(32,126) or car in range(192,223):
+      if car in range(32,127) or car in range(192,224):
          return True
       else:
          return False
@@ -343,7 +342,7 @@ class ImageWriter:
       while(not _end):
          c=self.buffer[self.buffer_read_ptr]
          self.buffer_read_ptr=self.buffer_read_ptr+1
-         
+        
          if self.is_printable(c):
             self.putchar(chr(c))
          elif c==27:
@@ -420,7 +419,10 @@ class ImageWriter:
          
       _fc=len(font[0])*f["upscale"]
       _fl=len(font)*f["upscale"]
-      _rc=self.imagescale*_fc*_s_w*ref_font_upscale*f["width_rescale"]
+      if _car<192:
+         _rc=self.imagescale*_fc*_s_w*ref_font_upscale*f["width_rescale"]
+      else:
+         _rc=self.imagescale*_fc*_s_w*ref_font_upscale
       _rl=self.imagescale*_fl*_s_h*ref_font_upscale
 
       if not scar in self.cache[cache_font_id]:
@@ -498,8 +500,6 @@ class ImageWriter:
 
       self.dot["column"]=self.dot["column"]+_rc
       self.head["column"]=self.head["column"]+1
-      if self.dot["column"]<18:
-         print("ici:",ord(_car))
 
    def serial_to_buffer(self,port,baudrate,parity,stopbits,bytesize):
       ser = serial.Serial(port=port,\
@@ -516,6 +516,30 @@ class ImageWriter:
                printer.im[0].save("test.png")
       ser.close()
 
+
+def print_font(printer,f):
+   printer.setCurrentFont(f)
+   printer.doublewide=True
+   printer.add_str_to_buffer(f["name"]+chr(13)+chr(13))
+   printer.doublewide=False
+   for i in range(32,127):
+      printer.add_str_to_buffer(chr(i))
+   printer.add_to_buffer(chr(13))
+   printer.add_str_to_buffer("Mouse: ")
+   for i in range(192,234):
+      printer.add_str_to_buffer(chr(i))
+   try:
+      printer.add_to_buffer(chr(13))
+      for i in ["us", "it", "da", "uk", "de", "sw", "fr", "sp"]:
+         printer.alt=i
+         printer.add_str_to_buffer(i+": ")
+         for j in [35,64,91,92,93,96,123,124,125,126]:
+            printer.add_str_to_buffer(chr(j))
+         printer.add_to_buffer(chr(13))
+      printer.add_to_buffer(chr(13))
+   except:
+      pass
+
  
 #printer = ImageWriter("p1",21/2.54,29.7/2.54)
 printer = ImageWriter("p1",8.5,12)
@@ -523,53 +547,47 @@ printer = ImageWriter("p1",8.5,12)
 #                         9600,\
 #                         serial.PARITY_NONE,\
 #                         serial.STOPBITS_ONE,serial.SEVENBITS)
-#printer.zeroslashed=True
+printer.zeroslashed=True
 #printer.crlf=False
-printer.setCurrentSize("Pica")
-printer.setCurrentFont(f_draft)
+printer._8bits=True
+
+print_font(printer,f_draft)
+print_font(printer,f_correspondence)
+print_font(printer,f_correspondenceP)
+print_font(printer,f_nlq)
+print_font(printer,f_nlqP)
+
 printer.boldface=True
-printer.add_str_to_buffer('A')
-for i in range(33,126):
-   printer.add_str_to_buffer(chr(i))
-printer.add_to_buffer(chr(13))
-#printer.add_to_buffer(chr(10))
 
-printer.setCurrentSize("Pica")
-printer.setCurrentFont(f_correspondence)
-printer.add_str_to_buffer('A')
-printer.boldface=False
-for i in range(33,126):
-   printer.add_str_to_buffer(chr(i))
-printer.add_to_buffer(chr(13))
+print_font(printer,f_draft)
+print_font(printer,f_correspondence)
+print_font(printer,f_correspondenceP)
+print_font(printer,f_nlq)
+print_font(printer,f_nlqP)
 
-printer.setCurrentFont(f_correspondenceP)
-
-printer.setCurrentSize("PicaP")
-printer.add_str_to_buffer('A')
-for i in range(33,126):
-   printer.add_str_to_buffer(chr(i))
-printer.add_to_buffer(chr(13))
-
-printer.setCurrentSize("EliteP")
-printer.add_str_to_buffer('A')
-for i in range(33,126):
-   printer.add_str_to_buffer(chr(i))
-printer.add_to_buffer(chr(13))
-print("1:",printer.dot["column"])
-printer.do_buffer()
-print("2:",printer.dot["column"])
-printer.setCurrentSize("Pica")
-print("3:",printer.dot["column"])
-#printer.add_to_buffer(chr(13))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("a")
-printer.add_to_buffer("1")
+printer.setCurrentFont(f_draft)
 for i in range(80):
    printer.add_str_to_buffer(str(i%10))
 printer.add_to_buffer(chr(13))
 for i in range(80):
    printer.add_str_to_buffer(str(i))
    printer.add_to_buffer(chr(13))
+printer.add_to_buffer(chr(13))
+
+printer.do_buffer()
+
+printer.im[0].save("test.pdf",save_all=True,append=False,dpi=(160*printer.sc,144*printer.sl),append_images=printer.im[1:])
+
+sys.exit(0)
+
+
+
+printer.setCurrentSize("Pica")
+#printer.add_to_buffer(chr(13))
+printer.add_to_buffer(chr(27))
+printer.add_to_buffer("a")
+printer.add_to_buffer("1")
+printer.add_to_buffer(chr(13))
 
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer("!")

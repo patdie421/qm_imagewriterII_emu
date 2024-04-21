@@ -3536,7 +3536,8 @@ f_correspondenceP={
       "list": [35,64,91,92,93,96,123,124,125,126],
       "font": correspondence_p_alt
    }, 
+   "mouse": correspondence_m,
    "upscale": 2,
-   "width_rescale": 2/3,
+   "width_rescale": 1/2,
    "underline":[1,1,1,1,1,1,1,1]
 }
