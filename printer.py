@@ -155,6 +155,13 @@ class ImageWriter:
       self.dot["lineFeedSpacing"]=dotPerInch*self.imagescale
 
 
+   def formFeed(self):
+      self.dot["column"]=self.left_margin
+      self.dot["line"]=0
+      self.im.append(Image.new(mode="RGB", size=(self.il, self.ic),color=(255,255,255)))
+      self.page=self.page+1
+
+
    def lineFeed(self,lines):
       self.dot["line"]=self.dot["line"]+lines*self.dot["lineFeedSpacing"]
       if self.dot["line"]<0: self.dot["line"]=0
@@ -168,6 +175,9 @@ class ImageWriter:
       if car==chr(10):
          self.do_buffer()
          self.lineFeed(1)
+      elif car==chr(12):
+         self.do_buffer()
+         self.formFeed()
       elif car==chr(13):
          self.do_buffer()
          self.CR(self.crlf)
@@ -419,7 +429,12 @@ class ImageWriter:
          
       _fc=len(font[0])*f["upscale"]
       _fl=len(font)*f["upscale"]
-      if _car<192:
+      m_rescale=False
+      try:
+         m_rescale=f["mouse_must_rescale"]
+      except:
+         pass
+      if _car<192 or m_rescale:
          _rc=self.imagescale*_fc*_s_w*ref_font_upscale*f["width_rescale"]
       else:
          _rc=self.imagescale*_fc*_s_w*ref_font_upscale
@@ -457,7 +472,6 @@ class ImageWriter:
       self.im[self.page].paste(imgcar,(x+dl,y+yd),imgcar) # see http://effbot.org/imagingbook/image.htm. second imgcar used as mask
       if self.boldface:
          self.im[self.page].paste(imgcar,(x+dl+1*ref_font_upscale,y+yd),imgcar)
-
 
 
    def printgr(self,x,y,b,color):
@@ -518,6 +532,9 @@ class ImageWriter:
 
 
 def print_font(printer,f):
+   print(printer.alt)
+   printer.alt="us"
+
    printer.setCurrentFont(f)
    printer.doublewide=True
    printer.add_str_to_buffer(f["name"]+chr(13)+chr(13))
@@ -551,25 +568,43 @@ printer.zeroslashed=True
 #printer.crlf=False
 printer._8bits=True
 
+printer.setCurrentSize("Elite")
 print_font(printer,f_draft)
 print_font(printer,f_correspondence)
+printer.setCurrentSize("EliteP")
 print_font(printer,f_correspondenceP)
+printer.setCurrentSize("Elite")
 print_font(printer,f_nlq)
+printer.setCurrentSize("EliteP")
 print_font(printer,f_nlqP)
 
 printer.boldface=True
-
+printer.add_to_buffer(chr(12))
+printer.setCurrentSize("Pica")
 print_font(printer,f_draft)
 print_font(printer,f_correspondence)
+printer.setCurrentSize("PicaP")
 print_font(printer,f_correspondenceP)
+printer.setCurrentSize("Pica")
 print_font(printer,f_nlq)
+printer.setCurrentSize("PicaP")
 print_font(printer,f_nlqP)
+
+printer.boldface=False
+printer.add_to_buffer(chr(12))
+printer.setCurrentSize("Ultracondensed")
+print_font(printer,f_draft)
+print_font(printer,f_correspondence)
+print_font(printer,f_nlq)
+
+printer.boldface=False
+printer.add_to_buffer(chr(12))
 
 printer.setCurrentFont(f_draft)
 for i in range(80):
    printer.add_str_to_buffer(str(i%10))
 printer.add_to_buffer(chr(13))
-for i in range(80):
+for i in range(1,72):
    printer.add_str_to_buffer(str(i))
    printer.add_to_buffer(chr(13))
 printer.add_to_buffer(chr(13))
@@ -581,14 +616,12 @@ printer.im[0].save("test.pdf",save_all=True,append=False,dpi=(160*printer.sc,144
 sys.exit(0)
 
 
-
 printer.setCurrentSize("Pica")
 #printer.add_to_buffer(chr(13))
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer("a")
 printer.add_to_buffer("1")
 printer.add_to_buffer(chr(13))
-
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer("!")
 printer.add_to_buffer("t")
@@ -645,7 +678,6 @@ printer.add_to_buffer(chr(27))
 printer.add_to_buffer('D')
 printer.add_to_buffer(chr(6))
 printer.add_to_buffer(chr(0))
-
 printer.add_str_to_buffer(" de charact"+chr(125)+"res")
 printer.add_to_buffer(chr(27))
 printer.add_to_buffer('x')
@@ -690,7 +722,6 @@ printer.add_to_buffer('X')
 printer.add_to_buffer('X')
 printer.add_to_buffer(chr(24))
 printer.add_str_to_buffer("0000")
-
 
 printer.do_buffer()
 
