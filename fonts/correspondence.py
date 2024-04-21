@@ -3525,7 +3525,8 @@ f_correspondence={
    "mouse": correspondence_m,
    "upscale": 2,
    "width_rescale": 1,
-   "underline":[1,1,1,1,1,1,1,1]
+   "underline":[1,1,1,1,1,1,1,1],
+   "proportional": False
 }
 
 
@@ -3539,5 +3540,6 @@ f_correspondenceP={
    "mouse": correspondence_m,
    "upscale": 2,
    "width_rescale": 1/2,
-   "underline":[1,1,1,1,1,1,1,1]
+   "underline":[1,1,1,1,1,1,1,1],
+   "proportional": True
 }

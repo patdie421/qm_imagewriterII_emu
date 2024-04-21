@@ -1956,6 +1956,7 @@ f_draft={
    "upscale": 2,
    "width_rescale":2/3,
    "mouse_must_rescale":True,
-   "underline":[1,0,1,0,1,0,1,0,1,0,1,0]
+   "underline":[1,0,1,0,1,0,1,0,1,0,1,0],
+   "proportional": False
 }
 

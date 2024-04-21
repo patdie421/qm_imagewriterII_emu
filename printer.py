@@ -17,7 +17,6 @@ f_draft["upscale"]=ref_font_upscale
 f_correspondence["upscale"]=ref_font_upscale
 f_nlq["upscale"]=int(ref_font_upscale/2)
 
-
 # resolution vertical normal : 72 dpi
 # resolution vertical maximum : 144 dpi
 # A4 = 29,7*21 => 11,7*8,27 => 1684 * 1191 ~ 2 Mo => 15 Mo (256 couleurs)
@@ -80,8 +79,9 @@ class ImageWriter:
       self.dot["column"]=0
       self.dot["line"]=0
       self.dot["lineFeedSpacing"]=24*self.imagescale*ref_font_upscale
-     
-      self.current_font=f_draft 
+ 
+      self.current_font="draft"
+#      self.current_font=f_draft 
       self.current_size="Pica"
       self.alt="us"
       self.underlined=False
@@ -109,8 +109,26 @@ class ImageWriter:
          "Semicondensed" : [ 13.4, 107, 856, 80/107 ],
          "Condensed" : [ 15, 120, 960, 80/120 ],
          "Ultracondensed" : [ 17, 136, 1088, 80/136 ],
-         "PicaP" : [ -1, 144, 1152, 1 ],
-         "EliteP" : [ -1, 160, 1280, 144/160 ]
+         "PicaP" : [ 9, 144, 1152, 1 ],
+         "EliteP" : [ 10, 160, 1280, 144/160 ]
+      }
+
+      self.font_combination = {
+         "draft": {
+            "standard": f_draft,
+            "halfsize": f_correspondence,
+            "proportional": f_correspondenceP 
+         },
+         "correspondence": {
+            "standard": f_correspondence,
+            "halfsize": f_correspondence,
+            "proportional": f_correspondenceP 
+         },
+         "nlq": {
+            "standard": f_nlq,
+            "halfsize": f_correspondence,
+            "proportional": f_nlqP
+         },
       }
 
       self.alt_from_code={
@@ -129,6 +147,15 @@ class ImageWriter:
       #cself.im.append(Image.new(mode="RGBA", size=(self.il, self.ic),color=(255,255,255,255))) # white page
       self.im.append(Image.new(mode="RGB", size=(self.il, self.ic),color=(255,255,255))) # white page
 
+
+   def get_font(self,f):
+      _f = self.font_combination[f]
+      if self.halfheight==True:
+         return _f["halfsize"]
+      elif self.current_size=="PicaP" or self.current_size=="EliteP":
+         return _f["proportional"]
+      else:
+         return _f["standard"]
 
    def calc_im_size(self):
       self.sl=ref_font_upscale*self.imagescale
@@ -252,11 +279,14 @@ class ImageWriter:
       elif c==ord('a'):
          c=self.get_buffer_next_car()
          if c==ord('0') or c==ord('m'):
-            self.current_font=f_correspondence
+            # self.current_font=f_correspondence
+            self.current_font="correspondence"
          elif c==ord('1'):
-            self.current_font=f_draft
+            # self.current_font=f_draft
+            self.current_font="draft"
          elif c==ord('2') or c==ord('M'):
-            self.current_font=f_nlq
+            # self.current_font=f_nlq
+            self.current_font="nlq"
       elif c==ord('Z'):
          c=self.get_buffer_next_car()
          if c==0:
@@ -374,7 +404,7 @@ class ImageWriter:
          self.head["line"]=self.head["line"]+1
    
 
-   def getcharimg(self,_car,couleur,f,s_w,s_h):
+   def getcharimg(self,_car,couleur,_f,s_w,s_h):
 
       _car=ord(_car)
       _s_w=s_w
@@ -387,6 +417,8 @@ class ImageWriter:
       car=-1
       prefix=""
       suffix=""
+
+      f = self.get_font(_f)
 
       if self.doublewide==True:
          _s_w=s_w*2
@@ -501,6 +533,8 @@ class ImageWriter:
 
 
    def putchar(self,_car,color=(0,0,0)):
+      s_w = s_h = 1
+      size=self.current_size
       s_w,s_h=self.getwh(self.current_size)
       img,_rc,_rl=self.getcharimg(_car,color,self.current_font,s_w,s_h)
       if self.dot["column"]+_rc > self.max_page_with_dpi:
@@ -532,12 +566,10 @@ class ImageWriter:
 
 
 def print_font(printer,f):
-   print(printer.alt)
    printer.alt="us"
-
    printer.setCurrentFont(f)
    printer.doublewide=True
-   printer.add_str_to_buffer(f["name"]+chr(13)+chr(13))
+   printer.add_str_to_buffer(f+" "+printer.current_size+chr(13)+chr(13))
    printer.doublewide=False
    for i in range(32,127):
       printer.add_str_to_buffer(chr(i))
@@ -560,47 +592,42 @@ def print_font(printer,f):
  
 #printer = ImageWriter("p1",21/2.54,29.7/2.54)
 printer = ImageWriter("p1",8.5,12)
-#printer.serial_to_buffer("/dev/tty.usbserial-14330",\
-#                         9600,\
-#                         serial.PARITY_NONE,\
-#                         serial.STOPBITS_ONE,serial.SEVENBITS)
-printer.zeroslashed=True
+
 #printer.crlf=False
 printer._8bits=True
 
 printer.setCurrentSize("Elite")
-print_font(printer,f_draft)
-print_font(printer,f_correspondence)
+print_font(printer,"draft")
+print_font(printer,"correspondence")
 printer.setCurrentSize("EliteP")
-print_font(printer,f_correspondenceP)
+print_font(printer,"correspondence")
 printer.setCurrentSize("Elite")
-print_font(printer,f_nlq)
+print_font(printer,"nlq")
 printer.setCurrentSize("EliteP")
-print_font(printer,f_nlqP)
-
+print_font(printer,"nlq")
 printer.boldface=True
 printer.add_to_buffer(chr(12))
 printer.setCurrentSize("Pica")
-print_font(printer,f_draft)
-print_font(printer,f_correspondence)
+print_font(printer,"draft")
+print_font(printer,"correspondence")
 printer.setCurrentSize("PicaP")
-print_font(printer,f_correspondenceP)
+print_font(printer,"correspondence")
 printer.setCurrentSize("Pica")
-print_font(printer,f_nlq)
+print_font(printer,"nlq")
 printer.setCurrentSize("PicaP")
-print_font(printer,f_nlqP)
+print_font(printer,"nlq")
 
 printer.boldface=False
 printer.add_to_buffer(chr(12))
 printer.setCurrentSize("Ultracondensed")
-print_font(printer,f_draft)
-print_font(printer,f_correspondence)
-print_font(printer,f_nlq)
+print_font(printer,"draft")
+print_font(printer,"correspondence")
+print_font(printer,"nlq")
 
 printer.boldface=False
 printer.add_to_buffer(chr(12))
 
-printer.setCurrentFont(f_draft)
+printer.setCurrentFont("draft")
 for i in range(80):
    printer.add_str_to_buffer(str(i%10))
 printer.add_to_buffer(chr(13))
@@ -614,118 +641,3 @@ printer.do_buffer()
 printer.im[0].save("test.pdf",save_all=True,append=False,dpi=(160*printer.sc,144*printer.sl),append_images=printer.im[1:])
 
 sys.exit(0)
-
-
-printer.setCurrentSize("Pica")
-#printer.add_to_buffer(chr(13))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("a")
-printer.add_to_buffer("1")
-printer.add_to_buffer(chr(13))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("!")
-printer.add_to_buffer("t")
-printer.add_to_buffer("o")
-printer.add_to_buffer(chr(14))
-printer.add_to_buffer("t")
-printer.add_to_buffer("o")
-printer.add_to_buffer(chr(15))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('"')
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("a")
-printer.add_to_buffer("2")
-printer.add_to_buffer("T")
-printer.add_to_buffer("O")
-printer.add_to_buffer("T")
-printer.add_to_buffer("O")
-
-# sp
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('Z')
-printer.add_to_buffer(chr(7))
-printer.add_to_buffer(chr(0))
-
-# us
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('D')
-printer.add_to_buffer(chr(7))
-printer.add_to_buffer(chr(0))
-
-# Undelined
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('X')
-
-# Half-Height
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('w')
-printer.add_str_to_buffer("Une longue chai"+chr(8)+"^ne")
-# end Half-Height
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('W')
-
-# nlq font
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer("a")
-printer.add_to_buffer("2")
-
-# fr
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('Z')
-printer.add_to_buffer(chr(1))
-printer.add_to_buffer(chr(0))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('D')
-printer.add_to_buffer(chr(6))
-printer.add_to_buffer(chr(0))
-printer.add_str_to_buffer(" de charact"+chr(125)+"res")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('x')
-printer.add_str_to_buffer("en haut")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('y')
-printer.add_str_to_buffer("en bas")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('z')
-printer.add_str_to_buffer("normal")
-printer.add_str_to_buffer("0000")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('D')
-printer.add_to_buffer(chr(0))
-printer.add_to_buffer(chr(1))
-printer.add_str_to_buffer("0000")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('Y')
-printer.add_to_buffer(chr(13))
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('L')
-printer.add_to_buffer('0')
-printer.add_to_buffer('1')
-printer.add_to_buffer('2')
-printer.add_str_to_buffer("0000")
-printer.add_to_buffer(chr(13))
-printer.add_str_to_buffer("0000")
-printer.add_to_buffer(chr(27))
-printer.add_to_buffer('L')
-printer.add_to_buffer('0')
-printer.add_to_buffer('0')
-printer.add_to_buffer('0')
-printer.add_str_to_buffer("0000")
-printer.add_to_buffer(chr(13))
-printer.add_str_to_buffer("0000")
-printer.add_to_buffer('o')
-printer.add_to_buffer(chr(8))
-printer.add_to_buffer(chr(8))
-printer.add_to_buffer(chr(8))
-printer.add_to_buffer('X')
-printer.add_to_buffer('X')
-printer.add_to_buffer('X')
-printer.add_to_buffer(chr(24))
-printer.add_str_to_buffer("0000")
-
-printer.do_buffer()
-
-printer.im[0].save("test.pdf",save_all=True,append=False,dpi=(160*printer.sc,144*printer.sl),append_images=printer.im[1:])
-#printer.im[0].save("test.pdf",save_all=True,append=False,append_images=printer.im[1:])
-
-sys.exit()
