@@ -27,30 +27,9 @@ def binary(num, length=8):
     return format(num, '#0{}b'.format(length + 2))
 
 
-def chrono():
-   n=time.time()
-   return n 
-
-
-def printChrono(s,c):
-   n=time.time()
-   r=n-c
-   print(s,r)
-
-
-def diffChrono(c):
-   n=time.time()-c
-   return n
-
-
-def rescale(f,s):
-   return np.asarray(np.kron(np.array(f), np.ones((s,int(s)))),dtype=np.int8)
-
-
-
 class ImageWriter:
    def __init__(self,name,width,height):
-      self.name=name
+      self.name = name
       self.width = width
       self.height = height
 
@@ -70,6 +49,7 @@ class ImageWriter:
 
       self.page = 0
       self.buffer_size=2048
+      # self.buffer_size=32768 # 32K Memory option
       self.buffer = bytearray(self.buffer_size)
       self.buffer_ptr = 0
       self.buffer_read_ptr = 0
@@ -141,11 +121,16 @@ class ImageWriter:
          "1_6":"fr",
          "0_7":"sp",
       }
+      self.esc_z = -1
 
       self.calc_im_size()
       self.im=[]
       #cself.im.append(Image.new(mode="RGBA", size=(self.il, self.ic),color=(255,255,255,255))) # white page
       self.im.append(Image.new(mode="RGB", size=(self.il, self.ic),color=(255,255,255))) # white page
+
+
+   def rescale(self,f,s):
+      return np.asarray(np.kron(np.array(f), np.ones((s,int(s)))),dtype=np.int8)
 
 
    def get_font(self,f):
@@ -268,6 +253,8 @@ class ImageWriter:
 
    def do_esc_cmd(self):
       c=self.get_buffer_next_car()
+      if c!=ord('D') and self.esc_z !=-1: # reset prev CTRL-Z for font selection
+         self.esc_z=-1
       if c==ord('X'): # Underlined
          self.underlined=True
       elif c==ord('Y'): # Ununderlined
@@ -278,14 +265,12 @@ class ImageWriter:
          self.boldface=False
       elif c==ord('a'):
          c=self.get_buffer_next_car()
-         if c==ord('0') or c==ord('m'):
+         if c==ord('0'):
             # self.current_font=f_correspondence
             self.current_font="correspondence"
          elif c==ord('1'):
-            # self.current_font=f_draft
             self.current_font="draft"
-         elif c==ord('2') or c==ord('M'):
-            # self.current_font=f_nlq
+         elif c==ord('2'):
             self.current_font="nlq"
       elif c==ord('Z'):
          c=self.get_buffer_next_car()
@@ -295,20 +280,13 @@ class ImageWriter:
                self._8bits=True
             elif c==1:
                self.zeroslashed=False
-         elif c>=0 and c<=6:
-            _c=c
+         elif c>=1 and c<=6: # can be a font selection sequence
+            _c=c 
             c=self.get_buffer_next_car()
-            if c==0:
-               c=self.get_buffer_next_car()
-               if c==27:
-                  c=self.get_buffer_next_car()
-                  if c==ord('D'):
-                     c=self.get_buffer_next_car()
-                     if c>=0 and c<=6:
-                        __c=c
-                        c=self.get_buffer_next_car()
-                        if c==0:
-                           self.alt=self.alt_from_code[str(_c)+"_"+str(__c)]
+            if c==0: # it is first characters of font sequence
+               self.esc_z = _c # keep value in memory
+            else:
+               self.esc_z = -1
          elif c==7:
             c=self.get_buffer_next_car()
             if c==0:
@@ -321,6 +299,12 @@ class ImageWriter:
                self._8bits=False
             elif c==1:
                self.zeroslashed=True 
+         if c>=1 and c<=6 and self.esc_z != -1: # second part of font sequence 
+            __c=c
+            c=self.get_buffer_next_car()
+            if c==0: # validation of font sequence
+               self.alt=self.alt_from_code[str(self.esc_z)+"_"+str(__c)]
+            self.esc_z=-1
          elif c==7:
             c=self.get_buffer_next_car()
             if c==0:
@@ -329,6 +313,10 @@ class ImageWriter:
          self.mouse_on=True
       elif c==ord('$'):
          self.mouse_on=False
+      elif c==ord('m'):
+         self.current_font="correspondence"
+      elif c==ord('M'):
+         self.current_font="nlq"
       elif c==ord('n'):
          self.current_size="Extended"
       elif c==ord('N'):
@@ -422,10 +410,10 @@ class ImageWriter:
 
       if self.doublewide==True:
          _s_w=s_w*2
-      if self.mouse_on==True:
-         _car=_car+128
       if self._8bits==False:
          _car=_car & 0x7F
+      if self.mouse_on==True and _car>=ord("@") and _car<=ord("_"):
+         _car=_car+128
       if self.halfheight==True:
          _s_h=s_h*0.5
       if self.s_script != 0:
@@ -474,7 +462,7 @@ class ImageWriter:
 
       if not scar in self.cache[cache_font_id]:
          try:
-            _f=rescale(font,f["upscale"])
+            _f=self.rescale(font,f["upscale"])
          except Exception as error:
             if DEBUG: print("rescale:",chr(_car),car,scar,error)
             pass
@@ -565,30 +553,111 @@ class ImageWriter:
       ser.close()
 
 
+#
+# test function
+#
+esc_cmd_for_alt_selection={
+   "us": chr(27)+"Z"+chr(7)+chr(0),
+   "it": chr(27)+"Z"+chr(6)+chr(0)+chr(27)+"D"+chr(1)+chr(0),
+   "da": chr(27)+"Z"+chr(5)+chr(0)+chr(27)+"D"+chr(2)+chr(0),
+   "uk": chr(27)+"Z"+chr(4)+chr(0)+chr(27)+"D"+chr(3)+chr(0),
+   "de": chr(27)+"Z"+chr(3)+chr(0)+chr(27)+"D"+chr(4)+chr(0),
+   "sw": chr(27)+"Z"+chr(2)+chr(0)+chr(27)+"D"+chr(5)+chr(0),
+   "fr": chr(27)+"Z"+chr(1)+chr(0)+chr(27)+"D"+chr(6)+chr(0),
+   "sp": chr(27)+"D"+chr(7)+chr(0)
+}
+
+esc_for_font_selection={
+   "correspondence": chr(27)+"a0",
+   "draft": chr(27)+"a1",
+   "nlq": chr(27)+"a2",
+   "correspondence_2": chr(27)+"m",
+   "nlq_2": chr(27)+"M",
+}
+
+esc_8bits = {
+   "off" : chr(27)+"D"+chr(0)+" ",
+   "on" : chr(27)+"Z"+chr(0)+" "
+}
+
+esc_mouse_low = {
+   "on" : chr(27)+"&",
+   "off" : chr(27)+"$"
+}
+
+esc_char_attr = {
+   "underline_on"     : chr(27)+"X", # pas testé
+   "underline_off"    : chr(27)+"Y", # pas testé
+   "bold_on"          : chr(27)+"!",
+   "bold_off"         : chr(27)+'"',
+   "double_width_on"  : chr(ord("N")-ord("@")),
+   "double_width_off" : chr(ord("O")-ord("@")),
+   "half_height_on"   : chr(27)+"w",
+   "half_height_off"  : chr(27)+"W",
+   "super_on"         : chr(27)+"x",
+   "sub_on"           : chr(27)+"y",
+   "super_sub_off"    : chr(27)+"z",
+   "zero_s"           : chr(27)+"D"+chr(0)+chr(1),
+   "zero_u"           : chr(27)+"Z"+chr(0)+chr(1)
+}
+
+esc_pitch = {
+   "Extended"       : chr(27)+"n",
+   "Pica"           : chr(27)+"N",
+   "Elite"          : chr(27)+"E",
+   "Semicondensed"  : chr(27)+"e",
+   "Condensed"      : chr(27)+"q",
+   "UltraCondensed" : chr(27)+"Q",
+   "PicaP"          : chr(27)+"p",
+   "EliteP"         : chr(27)+"P"
+}
+
+def print_pitch(printer,f):
+   printer.add_str_to_buffer(esc_for_font_selection[f])
+   for i in esc_pitch:
+      printer.add_str_to_buffer(esc_pitch[i])
+      printer.add_str_to_buffer("ABCDEFGH012345678")
+      printer.add_to_buffer(chr(13))
+
+
 def print_font(printer,f):
    printer.alt="us"
-   printer.setCurrentFont(f)
-   printer.doublewide=True
+   printer.add_str_to_buffer(esc_for_font_selection[f])
+#   printer.doublewide=True
+   printer.add_str_to_buffer(esc_char_attr["double_width_on"])
    printer.add_str_to_buffer(f+" "+printer.current_size+chr(13)+chr(13))
-   printer.doublewide=False
+#   printer.doublewide=False
+   printer.add_str_to_buffer(esc_char_attr["double_width_off"])
    for i in range(32,127):
       printer.add_str_to_buffer(chr(i))
    printer.add_to_buffer(chr(13))
+
+   printer.add_str_to_buffer(esc_8bits["off"])
+   printer.add_str_to_buffer(esc_mouse_low["on"])
    printer.add_str_to_buffer("Mouse: ")
    for i in range(192,234):
       printer.add_str_to_buffer(chr(i))
-   try:
-      printer.add_to_buffer(chr(13))
-      for i in ["us", "it", "da", "uk", "de", "sw", "fr", "sp"]:
-         printer.alt=i
-         printer.add_str_to_buffer(i+": ")
-         for j in [35,64,91,92,93,96,123,124,125,126]:
-            printer.add_str_to_buffer(chr(j))
-         printer.add_to_buffer(chr(13))
-      printer.add_to_buffer(chr(13))
-   except:
-      pass
+   printer.add_to_buffer(chr(13))
 
+   printer.add_str_to_buffer(esc_8bits["on"])
+   printer.add_str_to_buffer(esc_mouse_low["off"])
+   printer.add_str_to_buffer("Mouse: ")
+   for i in range(192,234):
+      printer.add_str_to_buffer(chr(i))
+
+   printer.add_to_buffer(chr(13))
+   for i in ["us", "it", "da", "uk", "de", "sw", "fr", "sp"]:
+      printer.add_str_to_buffer(esc_cmd_for_alt_selection[i])
+      printer.add_str_to_buffer(i+": ")
+      for j in [35,64,91,92,93,96,123,124,125,126]:
+         printer.add_str_to_buffer(chr(j))
+      printer.add_to_buffer(chr(13))
+   printer.add_to_buffer(chr(13))
+
+
+#
+# end test function
+#
  
 #printer = ImageWriter("p1",21/2.54,29.7/2.54)
 printer = ImageWriter("p1",8.5,12)
@@ -607,27 +676,57 @@ printer.setCurrentSize("EliteP")
 print_font(printer,"nlq")
 printer.boldface=True
 printer.add_to_buffer(chr(12))
+
 printer.setCurrentSize("Pica")
 print_font(printer,"draft")
-print_font(printer,"correspondence")
+print_font(printer,"correspondence_2")
 printer.setCurrentSize("PicaP")
-print_font(printer,"correspondence")
+print_font(printer,"correspondence_2")
 printer.setCurrentSize("Pica")
-print_font(printer,"nlq")
+print_font(printer,"nlq_2")
 printer.setCurrentSize("PicaP")
-print_font(printer,"nlq")
+print_font(printer,"nlq_2")
 
-printer.boldface=False
+printer.add_str_to_buffer(esc_char_attr["bold_on"])
 printer.add_to_buffer(chr(12))
 printer.setCurrentSize("Ultracondensed")
 print_font(printer,"draft")
 print_font(printer,"correspondence")
 print_font(printer,"nlq")
-
-printer.boldface=False
+printer.add_str_to_buffer(esc_char_attr["bold_off"])
 printer.add_to_buffer(chr(12))
 
-printer.setCurrentFont("draft")
+printer.add_str_to_buffer(esc_pitch["Pica"])
+printer.add_str_to_buffer(esc_char_attr["super_on"])
+printer.add_str_to_buffer("ABCDEFGH")
+printer.add_str_to_buffer(esc_char_attr["super_sub_off"])
+printer.add_str_to_buffer("ABCDEFGH")
+printer.add_str_to_buffer(esc_char_attr["sub_on"])
+printer.add_str_to_buffer("ABCDEFGH"+chr(13))
+printer.add_str_to_buffer(esc_char_attr["super_sub_off"])
+
+printer.add_str_to_buffer(esc_char_attr["half_height_on"])
+printer.add_str_to_buffer(esc_for_font_selection["draft"])
+printer.add_str_to_buffer("ABCDEFGH"+chr(13))
+printer.add_str_to_buffer(esc_for_font_selection["correspondence"])
+printer.add_str_to_buffer(esc_char_attr["bold_on"])
+printer.add_str_to_buffer("ABCDEFGH"+chr(13))
+printer.add_str_to_buffer(esc_char_attr["bold_off"])
+printer.add_str_to_buffer(esc_for_font_selection["nlq"])
+printer.add_str_to_buffer(esc_char_attr["double_width_on"])
+printer.add_str_to_buffer("ABCDEFGH"+chr(13))
+printer.add_str_to_buffer(esc_char_attr["double_width_off"])
+printer.add_str_to_buffer(esc_char_attr["half_height_off"])
+printer.add_str_to_buffer(esc_char_attr["zero_s"])
+printer.add_str_to_buffer("00000"+chr(13))
+printer.add_str_to_buffer(esc_char_attr["zero_u"])
+printer.add_str_to_buffer("00000"+chr(13))
+
+print_pitch(printer,"nlq")
+printer.add_to_buffer(chr(12))
+
+printer.setCurrentSize("Pica")
+printer.setCurrentFont("nlq")
 for i in range(80):
    printer.add_str_to_buffer(str(i%10))
 printer.add_to_buffer(chr(13))
